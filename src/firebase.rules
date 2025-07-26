@@ -1,0 +1,98 @@
+// These are the security rules for your Firebase project.
+// You should copy and paste these into the "Rules" tab of the
+// Firestore and Storage sections in your Firebase console.
+
+// ---------------------------
+// --- FIRESTORE DATABSE RULES ---
+// ---------------------------
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // vCards: Any authenticated user can create one.
+    // For now, reads/updates/deletes are locked down as the
+    // functionality is not implemented in the app.
+    match /vcards/{vcardId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if false;
+    }
+
+    // Default deny: By default, no one can read or write to the database.
+    // This is a security best practice.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+// ---------------------------
+// ---   FIREBASE STORAGE  ---
+// ---------------------------
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // --- Profile Images ---
+    // Rules:
+    // 1. Reads are public so anyone can see profile pictures.
+    // 2. Writes are restricted:
+    //    a. User must be authenticated.
+    //    b. User's ID must match the folder they are uploading to.
+    //    c. File must be an image (jpeg, jpg, or png).
+    //    d. File size must be less than 5MB.
+    match /profile-images/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+                      request.auth.uid == userId &&
+                      request.resource.contentType.matches('image/(jpeg|jpg|png)') &&
+                      request.resource.size < 5 * 1024 * 1024;
+    }
+
+    // Default deny: Deny all other access to prevent unauthorized uploads.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+
+// ======================================================================
+// HOW TO TEST STORAGE RULES IN THE FIREBASE CONSOLE RULES PLAYGROUND
+// ======================================================================
+
+// --- SIMULATION 1: SUCCESSFUL PROFILE PICTURE UPLOAD ---
+// This simulates a user correctly uploading their own profile picture.
+
+/*
+  RULES PLAYGROUND SETUP:
+  -------------------------------------------------------------
+  | Simulation type | create                                  |
+  |-----------------|-----------------------------------------|
+  | Location        | /profile-images/YOUR_USER_ID/profile.jpg|  <- IMPORTANT: MUST include a filename!
+  |-----------------|-----------------------------------------|
+  | Authenticated   | ON (checked)                            |
+  |-----------------|-----------------------------------------|
+  | Firebase UID    | YOUR_USER_ID                            |  <- IMPORTANT: Must be the SAME as in Location
+  -------------------------------------------------------------
+
+  ==> EXPECTED RESULT: "Simulated write allowed" (Green)
+*/
+
+// --- SIMULATION 2: FAILED UPLOAD (WRONG USER) ---
+// This simulates a user trying to upload a file to another user's folder.
+
+/*
+  RULES PLAYGROUND SETUP:
+  -------------------------------------------------------------
+  | Simulation type | create                                  |
+  |-----------------|-----------------------------------------|
+  | Location        | /profile-images/SOME_OTHER_USER_ID/pic.jpg|
+  |-----------------|-----------------------------------------|
+  | Authenticated   | ON (checked)                            |
+  |-----------------|-----------------------------------------|
+  | Firebase UID    | YOUR_USER_ID                            |  <- Different from the ID in Location
+  -------------------------------------------------------------
+
+  ==> EXPECTED RESULT: "Simulated write denied" (Red)
+*/
