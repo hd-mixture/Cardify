@@ -1,4 +1,4 @@
-# [Cardify(https://cardify.hdmixture.site)]: Virtual Visiting Card Generator
+# [Cardify(https://cardify.hdmixture.site/)]: Virtual Visiting Card Generator
 
 Cardify is a modern, web-based application that allows users to effortlessly create, customize, and download professional virtual visiting cards. With a live preview and a wide range of customization options, creating your perfect digital card has never been easier.
 
