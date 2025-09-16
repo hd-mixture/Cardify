@@ -21,6 +21,7 @@ import {
 import { app, db, doc, setDoc, deleteDoc, collection, query, where, getDocs, writeBatch } from '@/lib/firebase'; // Import additional firestore functions
 import { useMediaQuery } from '@/hooks/use-media-query';
 import Cookies from 'js-cookie';
+import { incrementVisitorCount } from '@/app/actions/admin-actions';
 
 
 interface AuthContextType {
@@ -80,6 +81,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 
     useEffect(() => {
+        // Track unique visitor
+        const hasBeenCounted = Cookies.get('cardify_visitor_counted');
+        if (!hasBeenCounted) {
+          incrementVisitorCount();
+          // Set a cookie that expires in 24 hours
+          Cookies.set('cardify_visitor_counted', 'true', { expires: 1 });
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (user) {
                 setUser(user);
