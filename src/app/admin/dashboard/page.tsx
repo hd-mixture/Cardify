@@ -3,13 +3,13 @@
 
 import { cn } from "@/lib/utils";
 import React, { useState, useEffect, useMemo } from 'react';
-import { listAllUsers, deleteUser, UserRecord, resetUserPasswordToDefault } from '@/app/actions/admin-actions';
+import { listAllUsers, deleteUser, UserRecord, resetUserPasswordToDefault, getVisitorCount } from '@/app/actions/admin-actions';
 import AuthGuard from '@/components/auth-guard';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Trash2, KeyRound, Loader2, AlertTriangle, RefreshCw, ArrowUpDown, LogOut, ShieldCheck, Monitor, Smartphone } from 'lucide-react';
+import { Trash2, KeyRound, Loader2, AlertTriangle, RefreshCw, ArrowUpDown, LogOut, ShieldCheck, Monitor, Smartphone, Users } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { formatDistanceToNow } from 'date-fns';
@@ -19,6 +19,7 @@ type SortDirection = 'ascending' | 'descending';
 
 function AdminDashboardPageContent() {
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [visitorCount, setVisitorCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { logout, user: adminUser } = useAuth();
@@ -27,14 +28,18 @@ function AdminDashboardPageContent() {
   const [isProcessing, setIsProcessing] = useState<string | null>(null); // For any user action
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'lastSignInTime', direction: 'descending' });
 
-  const fetchUsers = async () => {
+  const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
-      const userList = await listAllUsers();
+      const [userList, visitors] = await Promise.all([
+        listAllUsers(),
+        getVisitorCount()
+      ]);
       // Filter out the current admin user from the list
       const filteredUsers = userList.filter(user => user.uid !== adminUser?.uid);
       setUsers(filteredUsers);
+      setVisitorCount(visitors);
     } catch (e: any) {
       setError(e.message);
       toast({
@@ -48,8 +53,8 @@ function AdminDashboardPageContent() {
   };
 
   useEffect(() => {
-    if (adminUser) { // Fetch users only when admin user is available
-      fetchUsers();
+    if (adminUser) { // Fetch data only when admin user is available
+      fetchData();
     }
   }, [adminUser]);
   
@@ -89,7 +94,7 @@ function AdminDashboardPageContent() {
         description: 'The user has been successfully removed.',
         variant: 'success',
       });
-      fetchUsers(); // Re-fetch users after deletion to update the list
+      fetchData(); // Re-fetch all data
     } else {
       toast({
         title: 'Deletion Failed',
@@ -173,10 +178,26 @@ function AdminDashboardPageContent() {
       </header>
 
       <main className="container mx-auto p-4 sm:p-6 lg:p-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            <div className="bg-background p-6 rounded-lg border shadow-sm flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-full">
+                    <Users className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                    <p className="text-sm text-muted-foreground">Total Visitors</p>
+                    {visitorCount === null ? (
+                        <div className="h-7 w-12 bg-muted rounded animate-pulse" />
+                    ) : (
+                        <p className="text-2xl font-bold">{visitorCount.toLocaleString()}</p>
+                    )}
+                </div>
+            </div>
+        </div>
+
         <div className="bg-background rounded-lg border shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">User Management</h2>
-            <Button variant="outline" size="sm" onClick={fetchUsers} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={fetchData} disabled={loading}>
                 <RefreshCw className={cn("mr-2 h-4 w-4", loading && "animate-spin")} />
                 Refresh
             </Button>
