@@ -4,6 +4,8 @@
 import { adminAuth } from '@/lib/firebase-admin';
 import { db } from '@/lib/firebase-admin'; // Using admin db
 import { revalidatePath } from 'next/cache';
+import { FieldValue } from 'firebase-admin/firestore';
+
 
 // This is a simplified representation. In a real app, you might want more details.
 export interface UserRecord {
@@ -114,4 +116,29 @@ export async function resetUserPasswordToDefault(uid: string): Promise<{ success
         }
         return { success: false, message };
     }
+}
+
+export async function incrementVisitorCount(): Promise<void> {
+  const statsRef = db.collection('site_stats').doc('visitors');
+  try {
+    // Atomically increment the count
+    await statsRef.set({ count: FieldValue.increment(1) }, { merge: true });
+  } catch (error) {
+    console.error("Error incrementing visitor count:", error);
+    // We don't throw an error here to avoid breaking the client app
+  }
+}
+
+export async function getVisitorCount(): Promise<number> {
+  const statsRef = db.collection('site_stats').doc('visitors');
+  try {
+    const doc = await statsRef.get();
+    if (!doc.exists) {
+      return 0; // If the document doesn't exist, count is 0
+    }
+    return doc.data()?.count || 0;
+  } catch (error) {
+    console.error("Error getting visitor count:", error);
+    return 0; // Return 0 on error
+  }
 }
